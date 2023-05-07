@@ -6,12 +6,13 @@ from .SplendorLogicNumba import Board, observation_size, action_size
 import numpy as np
 from numba import jit, njit
 
-NUMBER_PLAYERS = 4
+
 
 class SplendorGame(Game):
-	def __init__(self):
-		self.num_players = NUMBER_PLAYERS
-		self.board = Board(NUMBER_PLAYERS)
+	def __init__(self, N):
+		self.NUMBER_PLAYERS = N #プレイヤー人数を学習前に変更
+		self.num_players = self.NUMBER_PLAYERS
+		self.board = Board(self.NUMBER_PLAYERS)
 
 	def getInitBoard(self):
 		self.board.init_game()
@@ -22,6 +23,9 @@ class SplendorGame(Game):
 
 	def getActionSize(self):
 		return action_size()
+
+	def getMaxScoreDiff(self):
+		return 15
 
 	def getNextState(self, board, player, action, deterministic=False):
 		self.board.copy_state(board, True)
@@ -60,7 +64,7 @@ class SplendorGame(Game):
 		return board.tobytes()
 
 	def getNumberOfPlayers(self):
-		return NUMBER_PLAYERS
+		return self.NUMBER_PLAYERS
 
 	def moveToString(self, move, current_player):
 		return move_to_str(move)
@@ -69,3 +73,8 @@ class SplendorGame(Game):
 		board = Board(self.getNumberOfPlayers())
 		board.copy_state(numpy_board, False)
 		print_board(board)
+	
+	def getNobleGemIDs(self, board):
+		nobles = board.nobles
+		print("nobles: ", nobles)
+		return None

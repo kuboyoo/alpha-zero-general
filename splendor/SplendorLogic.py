@@ -3,6 +3,59 @@ from colorama import Style, Fore, Back
 import random
 import itertools
 
+give_ids = [
+	np.array([[3,4], [2,4], [2,3], [1,4], [1,3], [1,2], [0,4], [0,3], [0,2], [0,1]]),
+	np.array([[14,18,19], [13,17,19], [12,17,18], [11,16,19], [10,16,18], [9,16,17], [8,15,19], [7,15,18], [6,15,17], [5,15,16]]),
+	np.array([[12,13,14,17,18,19], [10,11,14,16,18,19], [9,11,13,17,16,19], [9,10,12,17,16,18], [7,8,14,15,19,18], [6,8,13,15,19,17], [6,7,12,15,18,17], [5,8,11,15,19,16], [5,7,10,15,18,16], [6,5,9,15,16,17]]),
+	np.array([[9,12,13,10,11,14,17,16,18,19], [6,7,8,12,13,14,15,17,18,19], [5,7,8,10,11,14,15,16,18,19],  [6,5,8,9,13,11,15,17,16,19], [6,5,7,9,12,10,15,17,16,18]]),
+	np.array([[2,3,4], [1,3,4], [1,2,4], [1,2,3], [0,3,4], [0,2,4], [0,2,3], [0,1,4], [0,1,3], [0,1,2]]),
+	np.array([[1,2,3,4], [0,2,3,4], [0,1,3,4], [0,1,2,4], [0,1,2,3]]),
+	np.array([1,2,3,4, 0,2,3,4, 0,1,3,4, 0,1,2,4, 0,1,2,3])
+]
+
+give_ids3 = np.array(
+			[[0, 3, 18], 
+    	 [0, 18, 4], 
+			 [0, 3, 19],
+			 [0, 19, 4],
+			 [1, 2, 17],
+			 [1, 17, 4],
+			 [1, 2, 19],
+			 [1, 19, 4],
+			 [2, 2, 17],
+			 [2, 17, 3],
+			 [2, 2, 18],
+			 [2, 18, 3],
+			 [3, 1, 16],
+			 [3, 16, 4],
+			 [3, 1, 19],
+			 [3, 19, 4],
+			 [4, 1, 16],
+			 [4, 16, 3],
+			 [4, 1, 18],
+			 [4, 18, 3],
+			 [5, 1, 16],
+			 [5, 16, 2],
+			 [5, 1, 17],
+			 [5, 17, 2],
+			 [6, 0, 15],
+			 [6, 15, 4],
+			 [6, 0, 19],
+			 [6, 19, 4],
+			 [7, 0, 15],
+			 [7, 15, 3],
+			 [7, 0, 18],
+			 [7, 18, 3],
+			 [8, 0, 15],
+			 [8, 15, 2],
+			 [8, 0, 17],
+			 [8, 17, 2],
+			 [9, 0, 15],
+			 [9, 15, 1],
+			 [9, 0, 16],
+			 [9, 16, 1]], dtype=np.int8
+		)
+
 def move_to_str(move, short=False):
 	color_names = ['white', 'blue', 'green', 'red', 'black', 'gold']
 	if   move < 12:
@@ -32,22 +85,143 @@ def move_to_str(move, short=False):
 				return f'{light_colors[i-len(list_different_gems_up_to_3)] + "    " + Style.RESET_ALL}'
 			else:
 				return f'take 2 gems of color {color_names[i-len(list_different_gems_up_to_3)]}'
-	elif move < 12+15+3+30+20:
-		i = move - 12-15-3-30
-		if i < len(list_different_gems_up_to_2):
-			if short:
-				gems_str = [ light_colors[i] + "  " + Style.RESET_ALL for i, v in enumerate(list_different_gems_up_to_2[i][:5]) if v != 0]
-				return f'give {" ".join(gems_str)}'
-			else:
-				gems_str = [str(v)+" "+color_names[i] for i, v in enumerate(list_different_gems_up_to_2[i][:5]) if v != 0]
-				return f'give back {", ".join(gems_str)}'
+	
+	elif move < 12+15+3+30 +20: #i)
+		id = move - (12+15+3+30)
+		i = id // 2
+		j = give_ids[0][i][id % 2]
+		if short:
+			gems_str_take = [ light_colors[i] + "  " + Style.RESET_ALL  for i, v in enumerate(list_different_gems_up_to_3[i+15][:5]) if v != 0]
+			gems_str_give = [ light_colors[j] + "  " + Style.RESET_ALL for j, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+			return f'{" ".join(gems_str_take)} - {" ".join(gems_str_give)}'
 		else:
-			if short:
-				return f'give {light_colors[i-len(list_different_gems_up_to_2)] + "    " + Style.RESET_ALL}'
+			gems_str_take = [str(v)+" "+color_names[i] for i, v in enumerate(list_different_gems_up_to_3[i+15][:5]) if v != 0]
+			gems_str_give = [str(v)+" "+color_names[j] for j, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+			return f'take {", ".join(gems_str_take)} and give back {", ".join(gems_str_give)}'
+	
+	elif move < 12+15+3+30 +20+30: #ii)
+		id = move - (12+15+3+30 +20)
+		i = id // 3
+		j = give_ids[1][i][id % 3]
+		if short:
+			gems_str_take = [ light_colors[i] + "  " + Style.RESET_ALL  for i, v in enumerate(list_different_gems_up_to_3[i+15][:5]) if v != 0]
+			if j >= len(np_different_gems_up_to_2):
+				gems_str_give = f'{light_colors[j-len(list_different_gems_up_to_2)] + "    " + Style.RESET_ALL}'
 			else:
-				return f'give back 2 {color_names[i-len(list_different_gems_up_to_2)]}'
+				gems_str_give = [ light_colors[jj] + "  " + Style.RESET_ALL for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+				gems_str_give = " ".join(gems_str_give)
+			return f'{" ".join(gems_str_take)} - {gems_str_give}'
+		else:
+			gems_str_take = [str(v)+" "+color_names[i] for i, v in enumerate(list_different_gems_up_to_3[i+15][:5]) if v != 0]
+			if j >= len(np_different_gems_up_to_2):
+				gems_str_give = f'2 {color_names[j-len(list_different_gems_up_to_2)]}'
+			else:
+				gems_str_give = [str(v)+" "+color_names[jj] for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+				gems_str_give = ", ".join(gems_str_give)
+			return f'take {", ".join(gems_str_take)} and give back {gems_str_give}'
+		
+	elif move < 12+15+3+30 +20+30+60: #iii)
+		id = move - (12+15+3+30 +20+30)
+		i = id // 6
+		j = give_ids[2][i][id % 6]
+		if short:
+			gems_str_take = [ light_colors[i] + "  " + Style.RESET_ALL  for i, v in enumerate(list_different_gems_up_to_3[i+5][:5]) if v != 0]
+			if j >= len(np_different_gems_up_to_2):
+				gems_str_give = f'{light_colors[j-len(list_different_gems_up_to_2)] + "    " + Style.RESET_ALL}'
+			else:
+				gems_str_give = [ light_colors[jj] + "  " + Style.RESET_ALL for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+				gems_str_give = " ".join(gems_str_give)
+			return f'{" ".join(gems_str_take)} - {gems_str_give}'
+		else:
+			gems_str_take = [str(v)+" "+color_names[i] for i, v in enumerate(list_different_gems_up_to_3[i+5][:5]) if v != 0]
+			if j >= len(np_different_gems_up_to_2):
+				gems_str_give = f'2 {color_names[j-len(list_different_gems_up_to_2)]}'
+			else:
+				gems_str_give = [str(v)+" "+color_names[jj] for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+				gems_str_give = ", ".join(gems_str_give)
+			return f'take {", ".join(gems_str_take)} and give back {gems_str_give}'
+	
+	elif move < 12+15+3+30 +20+30+60+50: #iv)
+		id = move - (12+15+3+30 +20+30+60)
+		i = id // 10
+		j = give_ids[3][i][id % 10]
+		if short:
+			gems_str_take = light_colors[i] + "  " + Style.RESET_ALL
+			if j >= len(np_different_gems_up_to_2):
+				gems_str_give = f'{light_colors[j-len(list_different_gems_up_to_2)] + "    " + Style.RESET_ALL}'
+			else:
+				gems_str_give = [ light_colors[jj] + "  " + Style.RESET_ALL for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+				gems_str_give = " ".join(gems_str_give)
+			return f'{gems_str_take}{gems_str_take} - {gems_str_give}'
+		else:
+			if j >= len(np_different_gems_up_to_2):
+				gems_str_give = f'2 {color_names[j-len(list_different_gems_up_to_2)]}'
+			else:
+				gems_str_give = [str(v)+" "+color_names[jj] for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+				gems_str_give = ", ".join(gems_str_give)
+			return f'take 2 {color_names[i]} and give back {gems_str_give}'
+			
+	elif move < 12+15+3+30 +20+30+60+50+30: #v)
+		id = move - (12+15+3+30 +20+30+60+50)
+		i = id // 3
+		j = give_ids[4][i][id % 3]
+		if short:
+			gems_str_take = [ light_colors[i] + "  " + Style.RESET_ALL  for i, v in enumerate(list_different_gems_up_to_3[i+5][:5]) if v != 0]
+			gems_str_give = [ light_colors[jj] + "  " + Style.RESET_ALL for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+			return f'{" ".join(gems_str_take)} - {" ".join(gems_str_give)}'
+		else:
+			gems_str_take = [str(v)+" "+color_names[i] for i, v in enumerate(list_different_gems_up_to_3[i+5][:5]) if v != 0]
+			gems_str_give = [str(v)+" "+color_names[jj] for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+			return f'take {", ".join(gems_str_take)} and give back {", ".join(gems_str_give)}'
+	
+	elif move < 12+15+3+30 +20+30+60+50+30+20: #vi)
+		id = move - (12+15+3+30 +20+30+60+50+30)
+		i = id // 4
+		j = give_ids[5][i][id % 4]
+		if short:
+			gems_str_take = light_colors[i] + "  " + Style.RESET_ALL
+			gems_str_give = [ light_colors[jj] + "  " + Style.RESET_ALL for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+			return f'{gems_str_take}{gems_str_take} - {" ".join(gems_str_give)}'
+		else:
+			gems_str_give = [str(v)+" "+color_names[jj] for jj, v in enumerate(list_different_gems_up_to_2[j][:5]) if v != 0]
+			return f'take 2 {color_names[i]}and give back {", ".join(gems_str_give)}'
+
+	elif move < 12+15+3+30 +20+30+60+50+30+20+20: #vii)
+		id = move - (12+15+3+30 +20+30+60+50+30+20)
+		i = id // 4
+		j = give_ids[6][id]
+		gems_str_take = light_colors[i] + "  " + Style.RESET_ALL if short else f'take {color_names[i]}'
+		gems_str_give = "- " + light_colors[j] + "  " + Style.RESET_ALL if short else f'and give back {color_names[j]}'
+		return f'{gems_str_take} {gems_str_give}'
+
+	elif move < 12+15+3+30 +20+30+60+50+30+20+20+75: #viii)
+		id = move - (12+15+3+30 +20+30+60+50+30+20+20)
+		i = id // 5
+		j = id % 5
+
+		gems_str_give = light_colors[j] + "  " + Style.RESET_ALL if short else f'give back {color_names[j]}'
+
+		if i < 12:
+			tier, index = divmod(i, 4)
+			return f'rsv t{tier}-c{index} - {gems_str_give}' if short else f'reserve from tier {tier} index {index} and {gems_str_give}'
+		else:
+			tier = i-12
+			return f'rsv t{tier}-deck - {gems_str_give}' if short else f'reserve from deck of tier {tier} and {gems_str_give}'
+	
+	elif move < 12+15+3+30 +20+30+60+50+30+20+20+75 +40: #xi)
+		id = move - (12+15+3+30 +20+30+60+50+30+20+20+75)
+		i = id // 4 + 15 #take 3(異)
+		if short:
+			gems_str_take = [ light_colors[i] + "  " + Style.RESET_ALL for i, v in enumerate(list_different_gems_up_to_3[i][:5]) if v != 0 for _ in range(v)]
+			gems_str_give = [ light_colors[j] + "  " + Style.RESET_ALL for j, v in enumerate(list_2specs_gems_up_to3[id][:5]) if v != 0 for _ in range(v)]
+			return f'{" ".join(gems_str_take)} - {" ".join(gems_str_give)}'
+		else:
+			gems_str_take = [str(v)+" "+color_names[i] for i, v in enumerate(list_different_gems_up_to_3[i][:5]) if v != 0]
+			gems_str_give = [str(v)+" "+color_names[j] for j, v in enumerate(list_2specs_gems_up_to3[id][:5]) if v != 0]
+			return f'take {", ".join(gems_str_take)} and give back {", ".join(gems_str_give)}'
 	else:
 		return f'nothing' if short else f'do nothing'
+	
 
 def row_to_str(row, n=2):
 	if row < 1:
@@ -80,11 +254,18 @@ def _gen_list_of_different_gems(max_num_gems):
 		results += [ sum(comb) for comb in itertools.combinations(gems, n) ]
 	return results
 
+def _gen_list_of_3gems_2spec():
+	gems2 = _gen_list_of_different_gems(2)
+	gems2 = gems2 + (np.array(gems2[:5])*2).tolist()
+	results = [gems2[i[1]] + gems2[i[2]]  for i in give_ids3]
+	return results
 
 list_different_gems_up_to_3 =  _gen_list_of_different_gems(3)
 list_different_gems_up_to_2 =  _gen_list_of_different_gems(2)
+list_2specs_gems_up_to3     = _gen_list_of_3gems_2spec() #2種類の組み合わせ(0枚含む)
 np_different_gems_up_to_2 = np.array(list_different_gems_up_to_2, dtype=np.int8)
 np_different_gems_up_to_3 = np.array(list_different_gems_up_to_3, dtype=np.int8)
+np_2specs_gems_up_to_3 = np.array(list_2specs_gems_up_to3, dtype=np.int8)
 
 # cards_symmetries = itertools.permutations(range(4))
 cards_symmetries   = [(1, 3, 0, 2), (2, 0, 3, 1), (3, 2, 1, 0)]

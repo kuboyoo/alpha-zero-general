@@ -1,3 +1,5 @@
+import pickle 
+
 class AverageMeter(object):
     """From https://github.com/pytorch/examples/blob/master/imagenet/main.py"""
 
@@ -20,3 +22,13 @@ class AverageMeter(object):
 class dotdict(dict):
     def __getattr__(self, name):
         return self[name]
+
+def savePkl(path: str, obj: object):
+    # pickle化してファイルに書き込み
+    with open(path, 'wb') as f:
+        pickle.dump(obj, f)
+
+def loadPkl(path: str):
+    with open(path, 'rb') as f:
+        obj = pickle.load(f)
+    return obj

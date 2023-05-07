@@ -54,15 +54,20 @@ class FlattenAndPartialGPool(nn.Module):
 
 
 class SplendorNNet(nn.Module):
-	def __init__(self, game, args):
+	def __init__(self, game, args, use_token_exchange=False):
 		# game params
 		self.nb_vect, self.vect_dim = game.getBoardSize()
 		self.action_size = game.getActionSize()
+
+		self.old_action_size = 366
+		self.new_action_size = 406 if use_token_exchange else 60
+
 		self.scdiff_size = 2 * game.getMaxScoreDiff() + 1
 		self.num_players = game.num_players
 		self.num_scdiffs = {2: 2, 3: 3, 4: 4}[self.num_players] # Number of combinations of 2 players
 		self.args = args
 		self.version = args['nn_version']
+		self.name = args['name']
 
 		super(SplendorNNet, self).__init__()
 		def _init(m):
@@ -120,6 +125,7 @@ class SplendorNNet(nn.Module):
 			layer1D.apply(_init)
 
 	def forward(self, input_data, valid_actions):
+		#print("shape: ", input_data.transpose(-1, -2).shape)
 		x = input_data.transpose(-1, -2).view(-1, self.vect_dim, self.nb_vect)
 		
 		x = self.dense2d_1(x)
@@ -133,6 +139,29 @@ class SplendorNNet(nn.Module):
 		
 		v = self.output_layers_V(x).squeeze(1)
 		sdiff = self.output_layers_SDIFF(x).squeeze(1)
-		pi = torch.where(valid_actions, self.output_layers_PI(x).squeeze(1), self.lowvalue)
+
+		out_pi = self.output_layers_PI(x).squeeze(1)
+
+		#交換手追加による合法手の数変化への対応(学習時に存在しない手の行動確率は0埋め)
+		#ベンチマーク計測時のみON(普段は速度優先のためOFF)
+		num_pi = self.output_layers_PI(x).squeeze(1).shape[1]
+		num_val = valid_actions.shape[1]
+		num_diff = num_val - num_pi
+		if num_diff > 0:
+			out_pi = torch.cat((out_pi, torch.zeros((1, num_diff))), dim=1)
+		pi = torch.where(valid_actions, out_pi, self.lowvalue)
+
+		#print("Raw Value: ", v.data.cpu().numpy()[0])
+		#print("Win Rate: ", torch.tanh(v))
 
 		return F.log_softmax(pi, dim=1), torch.tanh(v), F.log_softmax(sdiff.view(-1, self.num_scdiffs, self.scdiff_size).transpose(1,2), dim=1) # TODO
+
+#部分的転移(by chatGPT4)
+def transfer_weights(self, old_model):
+	# Copy weights from the old model to the new model
+	for old_param, new_param in zip(old_model.parameters(), self.parameters()):
+			new_param.data.copy_(old_param.data)
+	
+	# Initialize the output layers for the new action space (the token exchange actions)
+	self.output_layers_PI[1].weight.data[:, self.old_action_size:self.new_action_size].normal_(0, 0.01)
+	self.output_layers_PI[1].bias.data[self.old_action_size:self.new_action_size].zero_()

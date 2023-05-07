@@ -2,9 +2,14 @@
 
 import Arena
 from MCTS import MCTS
-from santorini.SantoriniPlayers import *
-from santorini.SantoriniGame import SantoriniGame as Game
-from santorini.NNet import NNetWrapper as NNet
+#from santorini.SantoriniPlayers import *
+#from santorini.SantoriniGame import SantoriniGame as Game
+#from santorini.NNet import NNetWrapper as NNet
+
+from splendor.SplendorPlayers import *
+from splendor.SplendorGame import SplendorGame as Game
+from splendor.NNet import NNetWrapper as NNet
+
 
 import numpy as np
 from utils import *
@@ -14,6 +19,7 @@ import subprocess
 import itertools
 import json
 import multiprocessing
+import copy
 
 """
 use this script to play any two agents against each other, or play manually with
@@ -23,46 +29,87 @@ any agent.
 game = None
 _lock = multiprocessing.Lock()
 
-def create_player(name, args):
+def create_player(name, args, player_id=None):
 	global game
+	num_players = len(args.players)
+	print("Num of Players: ", num_players)
+
 	if game is None:
-		game = Game()
-	# all players
-	if name == 'random':
-		return RandomPlayer(game).play
-	if name == 'greedy':
-		return GreedyPlayer(game).play
-	if name == 'human':
-		return HumanPlayer(game).play
+		game = Game(num_players)
 
 	# set default values but will be overloaded when loading checkpoint
-	nn_args = dict(lr=None, dropout=0., epochs=None, batch_size=None, nn_version=-1)
+	bias = None
+	num_mcts = args.numMCTSSims
+	nn_args = dict(lr=None, dropout=0., epochs=None, batch_size=None, nn_version=-1, name=name)
 	net = NNet(game, nn_args)
+	#cpt_dir, cpt_file = os.path.split("./splendor/pretrained_%dplayers.pt" % num_players)
 	cpt_dir, cpt_file = os.path.split(name)
 	additional_keys = net.load_checkpoint(cpt_dir, cpt_file)
-
-	cpuct = additional_keys.get('cpuct')
-	cpuct = float(cpuct[0]) if isinstance(cpuct, list) else cpuct
+	#cpuct = additional_keys.get('cpuct')
+	#cpuct = float(cpuct[0]) if isinstance(cpuct, list) else cpuct
+	cpuct = args.cpuct if args.cpuct else additional_keys.get('cpuct', 0.)
+	fpu = args.fpu if args.fpu else additional_keys.get('fpu', 0.)
+	#if "7" in name:
+	#	fpu = 0.03
 	mcts_args = dotdict({
 		'numMCTSSims'     : args.numMCTSSims if args.numMCTSSims else additional_keys.get('numMCTSSims', 100),
-		'fpu'             : args.fpu if args.fpu else additional_keys.get('fpu', 0.),
-		'cpuct'           : args.cpuct if args.cpuct else cpuct,
+		'fpu'             : fpu,
+		'cpuct'           : cpuct, #args.cpuct if args.cpuct else cpuct,
 		'prob_fullMCTS'   : 1.,
 		'forced_playouts' : False,
 		'no_mem_optim'    : False,
 	})
 	mcts = MCTS(game, net, mcts_args)
-	player = lambda x, n: np.argmax(mcts.getActionProb(x, temp=(0.5 if n <= 6 else 0.), force_full_search=True)[0])
+
+	# all players
+	if name == 'random':
+		return RandomPlayer(game).play
+	elif name == 'greedy':
+		return GreedyPlayer(game).play
+	elif name == 'human':
+		return HumanPlayer(game).play
+	elif name == 'alphabeta':
+		return AlphaBetaPlayer(game, player=player_id, mcts=mcts).play
+	
+	elif name == "ai_1": #読み手数ごとの強さ比較用
+		num_mcts = args.numMCTSSims1
+		name = "./result_230410/checkpoint_6.pt"
+		bias = None
+
+	elif name == "ai_2":
+		num_mcts = args.numMCTSSims2
+		name = "./result_230410/checkpoint_41.pt"
+		bias = None
+	
+	elif name == "horizon":
+		bias = copy.copy(name)
+		name = "./splendor/pretrained_2players.pt"
+	else:
+		bias = None
+		num_mcts = args.numMCTSSims
+
+	player = lambda x: np.argmax(mcts.getActionProb(x, temp=0, force_full_search=True, bias=bias)[0])
+	#player = lambda x, n: np.argmax(mcts.getActionProb(x, temp=(0.5 if n <= 6 else 0.), force_full_search=True)[0])
 	return player
 
 def play(args):
 	players = [p+'/best.pt' if os.path.isdir(p) else p for p in args.players]
+	num_players = len(players)
 
-	print(players[0], 'vs', players[1])
-	player1, player2 = create_player(players[0], args), create_player(players[1], args)
-	human = 'human' in players
-	arena = Arena.Arena(player1, player2, game, display=game.printBoard)
-	result = arena.playGames(args.num_games, verbose=args.display or human)
+	if num_players == 2:
+		print(players[0], 'vs', players[1])
+		player1, player2 = create_player(players[0], args, 0), create_player(players[1], args, 1)
+		human = 'human' in players
+		arena = Arena.Arena(player1, player2, None, game, args, display=game.printBoard)
+		result = arena.playGames(args.num_games, verbose=args.display or human)
+	elif num_players == 3:
+		print(players[0], 'vs', players[1], 'vs', players[2])
+		player1 = create_player(players[0], args, 0)
+		player2 = create_player(players[1], args, 1)
+		player3 = create_player(players[2], args, 2)
+		human = 'human' in players
+		arena = Arena.Arena(player1, player2, player3, game, args, display=game.printBoard)
+		result = arena.playGames(args.num_games, verbose=args.display or human)
 	return result
 
 def play_age(args):
@@ -78,7 +125,8 @@ def plays(list_tasks, args, callback_results=None):
 	n = len(list_tasks)
 	nb_tasks_per_thread = math.ceil(n/args.max_compare_threads)
 	nb_threads = math.ceil(n/nb_tasks_per_thread)
-	current_threads_list = subprocess.check_output(['ps', '-e', '-o', 'cmd']).decode('utf-8').split('\n')
+	
+	current_threads_list = subprocess.check_output(['ps', '-e', '-o', 'cmd'], shell=True).decode('utf-8').split('\n')
 	idx_thread = sum([1 for t in current_threads_list if 'pit.py' in t]) - 1
 	if idx_thread == 0:
 		print(f'\t{n} pits to do, splitted in {nb_tasks_per_thread} tasks * {nb_threads} threads')
@@ -87,6 +135,7 @@ def plays(list_tasks, args, callback_results=None):
 	elif idx_thread >= nb_threads:
 		print(f'I already have enough processes, exiting current one')
 		exit()
+	
 
 	last_kbd_interrupt = 0.
 	for (p1, p2) in list_tasks[idx_thread::nb_threads]:
@@ -156,7 +205,7 @@ def play_several_files(args):
 def profiling(args):
 	import cProfile, pstats
 
-	args.num_games = 4
+	#args.num_games = 4
 	profiler = cProfile.Profile()
 	print('\nstart profiling')
 	profiler.enable()
@@ -178,12 +227,16 @@ def main():
 	parser.add_argument('--num-games'          , '-n' , action='store', default=30   , type=int  , help='')
 	parser.add_argument('--profile'                   , action='store_true', help='enable profiling')
 	parser.add_argument('--display'                   , action='store_true', help='display')
+	parser.add_argument('--lag'                       , action='store_true', default=False, help='lag for watch ai vs ai')
+	parser.add_argument('--record-dir'                , action='store', default='./record/', help='record game state(path)')
 
-	parser.add_argument('--numMCTSSims'        , '-m' , action='store', default=None, type=int  , help='Number of games moves for MCTS to simulate.')
-	parser.add_argument('--cpuct'              , '-c' , action='store', default=None, type=float, help='cpuct value')
+	parser.add_argument('--numMCTSSims'        , '-m' , action='store', default=None  , type=int  , help='Number of games moves for MCTS to simulate.')
+	parser.add_argument('--numMCTSSims1'        , '-m1' , action='store', default=None  , type=int  , help='Number of games moves for MCTS to simulate.(first)')
+	parser.add_argument('--numMCTSSims2'        , '-m2' , action='store', default=None  , type=int  , help='Number of games moves for MCTS to simulate.(second)')
+	parser.add_argument('--cpuct'              , '-c' , action='store', default=None  , type=float, help='')
 	parser.add_argument('--fpu'                , '-f' , action='store', default=None, type=float, help='Value for FPU (first play urgency)')
 
-	parser.add_argument('players'                     , metavar='player', nargs='*', help='list of players to test (either file, or "human" or "random")')
+	parser.add_argument('--players'            , '-p' , metavar='player', nargs='*', help='list of players to test (either file, or "human" or "random")')
 	parser.add_argument('--reference'          , '-r' , metavar='ref'   , nargs='*', help='list of reference players')
 	parser.add_argument('--vs-ref-only'        , '-z' ,  action='store_true', help='Use this option to prevent games between players, only players vs references')
 	parser.add_argument('--ratings'            , '-R' ,  action='store_true', help='Compute ratings based in games results and write ratings on disk')
@@ -198,9 +251,10 @@ def main():
 		profiling(args)
 	elif args.compare_age:
 		play_age(args)
-	elif args.reference or len(args.players) > 2:
+	#elif args.reference or len(args.players) > 2: #editted
+	elif args.reference:
 		play_several_files(args)
-	elif len(args.players) == 2:
+	elif len(args.players) >= 2:
 		play(args)
 	else:
 		raise Exception('Please specify a player (ai folder, random, greedy or human)')

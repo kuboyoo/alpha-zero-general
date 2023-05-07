@@ -11,6 +11,7 @@ def load_checkpoint(filepath):
 		checkpoint = torch.load(filepath, map_location='cpu')
 		nnet = checkpoint['full_model']
 		print(f'NN version: {checkpoint["nn_version"]}, network i/o shape: {nnet.nb_vect}x{nnet.vect_dim} -> {nnet.action_size}, total nb of nnet params: {sum(p.numel() for p in nnet.parameters())}')
+		#print(f'NN version: {checkpoint["nn_version"]}, network i/o shape: {56}x{7} -> {406}, total nb of nnet params: {sum(p.numel() for p in nnet.parameters())}')
 		return nnet
 	except:
 		print("MODEL {} CAN'T BE READ".format(filepath))
@@ -18,6 +19,7 @@ def load_checkpoint(filepath):
 
 def export_onnx(nnet, output_filepath):
 	dummy_board         = torch.randn(1, nnet.nb_vect, nnet.vect_dim, dtype=torch.float32)
+	#dummy_board         = torch.randn(1, 56, 7, dtype=torch.float32)
 	dummy_valid_actions = torch.BoolTensor(torch.randn(1, nnet.action_size)>0.5)
 	nnet.to('cpu')
 	nnet.eval()
@@ -28,12 +30,13 @@ def export_onnx(nnet, output_filepath):
 		output_filepath,
 		opset_version=16,
 		input_names = ['board', 'valid_actions'],
-		output_names = ['pi', 'v'],
+		output_names = ['pi', 'v', 'scdiffs'],
 		dynamic_axes={
 			'board'        : {0: 'batch_size'},
 			'valid_actions': {0: 'batch_size'},
 			'pi'           : {0: 'batch_size'},
 			'v'            : {0: 'batch_size'},
+			'scdiffs'      : {0: 'batch_size'},
 		}
 	)
 

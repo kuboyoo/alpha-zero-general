@@ -42,7 +42,7 @@ class MCTS():
         self.last_cleaning = 0
         self.batch_info = batch_info
 
-    def getActionProb(self, canonicalBoard, temp=1, force_full_search=False):
+    def getActionProb(self, canonicalBoard, temp=1, force_full_search=False, bias=None):
         """
         This function performs numMCTSSims simulations of MCTS starting from
         canonicalBoard.
